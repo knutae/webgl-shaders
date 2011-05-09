@@ -108,21 +108,14 @@ function compileShaders() {
 
     shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
     gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
-    
-    shaderProgram.glColorUniform = gl.getUniformLocation(shaderProgram, "uColor");
 }
 
 function reshape(w, h) {
     gl.viewport(0, 0, w, h);
 }
 
-function setColor(r, g, b) {
-    gl.uniform4f(shaderProgram.glColorUniform, r, g, b, 1.0);
-}
-
 function draw(canvas) {
     gl.clear(gl.COLOR_BUFFER_BIT);
-    setColor(1, 0, 0);
 
     boxVbo.bind(shaderProgram.vertexPositionAttribute);
     boxVbo.drawFill();
@@ -172,7 +165,6 @@ void main(void) {
 precision highp float;
 #endif
 
-uniform vec4 uColor;
 varying vec3 vVertexPosition;
 
 void main(void) {
