@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebGL shader testing</title>
+    <style type="text/css">
+canvas {
+    border-style: solid;
+    border-width: 10px;
+    border-color: #888888;
+    padding: 1px;
+}
+h3 {
+    margin: 0;
+    padding: 3px;
+}
+    </style>
+    <link rel="stylesheet" type="text/css" href="css/ui-darkness/jquery-ui-1.8.10.custom.css"/>
+    <script type="text/javascript" src="jquery-1.5.1.min.js"></script>
+    <script type="text/javascript" src="jquery-ui-1.8.10.custom.min.js"></script>
+    <script type="text/javascript" src="webgl-utils.js"></script>
+    <script type="text/javascript">
+
+var gl;
+var shaderProgram;
+var boxVbo;
+
+function initGL(canvas) {
+    gl = WebGLUtils.create3DContext(canvas, null);
+    if (!gl) {
+        throw {
+            name: 'WebGL Error',
+            message: 'Failed to create GL context.'
+        }
+    }
+}
+
+function createShader(src, type) {
+    var shader = gl.createShader(type);
+    gl.shaderSource(shader, src);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw {
+            name: 'Shader compile error',
+            message: gl.getShaderInfoLog(shader)
+        }
+    }
+    return shader;
+}
+
+function createStaticFloatVbo(vertices, itemSize, numItems) {
+    var vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+    return {
+        numItems: numItems,
+        
+        bind: function(vertexPositionAttribute) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+            gl.vertexAttribPointer(vertexPositionAttribute, itemSize, gl.FLOAT, false, 0, 0);
+        }
+    };
+};
+
+function createBoxVbo() {
+    // Why use 5 vertices for a box?
+    // Because gl.LINE_LOOP is buggy in both chrome and firefox, so we use
+    // gl.LINE_STRIP instead, with the same vertex first and last.
+    var vertices = [
+        // 10,  10,
+        // 10, 100,
+        //100, 100,
+        //100,  10,
+        // 10,  10
+        -1.0, -1.0,
+        -1.0,  1.0,
+         1.0,  1.0,
+         1.0, -1.0,
+        -1.0, -1.0,
+    ];
+    var vbo = createStaticFloatVbo(vertices, 2, 5);
+    return {
+        bind: vbo.bind,
+        drawFill: function () { gl.drawArrays(gl.TRIANGLE_FAN, 0, 4); },
+        drawOutline: function() { gl.drawArrays(gl.LINE_STRIP, 0, 5); }
+    };
+};
+
+function compileShaders() {
+    var vsrc = $('#vertex-shader').val();
+    var vertexShader = createShader(vsrc, gl.VERTEX_SHADER);
+    
+    var fsrc = $('#fragment-shader').val();
+    var fragmentShader = createShader(fsrc, gl.FRAGMENT_SHADER);
+    
+    shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vertexShader);
+    gl.attachShader(shaderProgram, fragmentShader);
+    gl.linkProgram(shaderProgram);
+    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+        var message = gl.getProgramInfoLog(shaderProgram) || 'Unknown error';
+        throw {
+            name: 'Shader link error',
+            message: message
+        }
+    }
+    gl.useProgram(shaderProgram);
+
+    shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+    gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+    
+    shaderProgram.glColorUniform = gl.getUniformLocation(shaderProgram, "uColor");
+}
+
+function reshape(w, h) {
+    gl.viewport(0, 0, w, h);
+}
+
+function setColor(r, g, b) {
+    gl.uniform4f(shaderProgram.glColorUniform, r, g, b, 1.0);
+}
+
+function draw(canvas) {
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    setColor(1, 0, 0);
+
+    boxVbo.bind(shaderProgram.vertexPositionAttribute);
+    boxVbo.drawFill();
+}
+
+$(document).ready(function() {
+    $('#gl-canvas').resizable();
+    var canvas = document.getElementById('gl-canvas');
+    try {
+        initGL(canvas);
+        compileShaders();
+        gl.clearColor(0, 1, 1, 1);
+
+        boxVbo = createBoxVbo();
+        reshape(canvas.width, canvas.height);
+        draw(canvas);
+    }
+    catch (e) {
+        alert (e.name + ' : ' + e.message);
+    }
+});
+
+    </script>
+</head>
+<body>
+    <table>
+        <tr>
+            <td>
+                <canvas id="gl-canvas" width="500" height="400"
+                        class="ui-corner-all"></canvas>
+            </td>
+
+            <td>
+                <h3 class="ui-corner-all ui-widget-header">Vertex shader</h3>
+                <textarea id="vertex-shader" rows="10" cols="80">
+attribute vec3 aVertexPosition;
+varying vec3 vVertexPosition;
+
+void main(void) {
+    gl_Position = vec4(aVertexPosition, 1.0);
+    vVertexPosition = aVertexPosition;
+}
+</textarea>
+                <h3 class="ui-corner-all ui-widget-header">Fragment shader</h3>
+                <textarea id="fragment-shader" rows="10" cols="80">
+#ifdef GL_ES
+precision highp float;
+#endif
+
+uniform vec4 uColor;
+varying vec3 vVertexPosition;
+
+void main(void) {
+    float r = 0.5 + vVertexPosition[0]*0.5;
+    float g = 0.5 + vVertexPosition[1]*0.5;
+    float b = 1.0 - (r + g)*0.5;
+    gl_FragColor = vec4(r, g, b, 1.0);
+}
+</textarea>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
