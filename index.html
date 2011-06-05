@@ -13,6 +13,17 @@ h3 {
     margin: 0;
     padding: 3px;
 }
+#error {
+    background-color: #ff0;
+    border-style: solid;
+    border-width: 1px;
+    border-color: #800;
+    padding: 5px;
+    display: none;
+}
+#errorHeading {
+    color: #400;
+}
     </style>
     <link rel="stylesheet" type="text/css" href="css/ui-darkness/jquery-ui-1.8.10.custom.css"/>
     <script type="text/javascript" src="jquery-1.5.1.min.js"></script>
@@ -24,13 +35,27 @@ var gl;
 var shaderProgram;
 var boxVbo;
 
+function throwError(name, message) {
+    throw {
+        name: name,
+        message: message
+    }
+}
+
+function showError(name, message) {
+    $('#errorHeading').text(name + ':');
+    $('#errorMessage').text(message);
+    $('#error').slideDown();
+}
+
+function hideError() {
+    $('#error').slideUp();
+}
+
 function initGL(canvas) {
     gl = WebGLUtils.create3DContext(canvas, null);
     if (!gl) {
-        throw {
-            name: 'WebGL Error',
-            message: 'Failed to create GL context.'
-        }
+        throwError('WebGL Error', 'Failed to create GL context.');
     }
 }
 
@@ -39,10 +64,7 @@ function createShader(src, type) {
     gl.shaderSource(shader, src);
     gl.compileShader(shader);
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        throw {
-            name: 'Shader compile error',
-            message: gl.getShaderInfoLog(shader)
-        }
+        throwError('Shader compile error', gl.getShaderInfoLog(shader));
     }
     return shader;
 }
@@ -86,6 +108,17 @@ function createBoxVbo() {
     };
 };
 
+function recompileShaders() {
+    try {
+        compileShaders();
+        draw();
+        hideError();
+    }
+    catch (e) {
+        showError(e.name, e.message);
+    }
+}
+
 function compileShaders() {
     var vsrc = $('#vertex-shader').val();
     var vertexShader = createShader(vsrc, gl.VERTEX_SHADER);
@@ -121,6 +154,12 @@ function draw(canvas) {
     boxVbo.drawFill();
 }
 
+function attachRecompileEvents(textAreaId) {
+    var textArea = $(textAreaId);
+    textArea.change(recompileShaders);
+    textArea.keyup(recompileShaders);
+}
+
 $(document).ready(function() {
     $('#gl-canvas').resizable();
     var canvas = document.getElementById('gl-canvas');
@@ -134,13 +173,19 @@ $(document).ready(function() {
         draw(canvas);
     }
     catch (e) {
-        alert (e.name + ' : ' + e.message);
+        showError(e.name, e.message);
     }
+    
+    attachRecompileEvents('#fragment-shader');
+    attachRecompileEvents('#vertex-shader');
 });
 
     </script>
 </head>
 <body>
+    <div id="error">
+        <strong id="errorHeading">Header:</strong> <span id="errorMessage">Hello world</span>
+    </div>
     <table>
         <tr>
             <td>
