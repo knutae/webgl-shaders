@@ -24,16 +24,32 @@ h3 {
 #errorHeading {
     color: #400;
 }
+.editorContainer {
+    position: relative;
+    width: 600px;
+    height: 200px;
+}
+.editor { 
+    margin: 0;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
     </style>
     <link rel="stylesheet" type="text/css" href="css/ui-darkness/jquery-ui-1.8.10.custom.css"/>
     <script type="text/javascript" src="jquery-1.5.1.min.js"></script>
     <script type="text/javascript" src="jquery-ui-1.8.10.custom.min.js"></script>
     <script type="text/javascript" src="webgl-utils.js"></script>
+    <script type="text/javascript" src="ace/ace.js" charset="utf-8"></script>
     <script type="text/javascript">
 
 var gl;
 var shaderProgram;
 var boxVbo;
+var fragmentEditor;
+var vertexEditor;
 
 function throwError(name, message) {
     throw {
@@ -120,10 +136,10 @@ function recompileShaders() {
 }
 
 function compileShaders() {
-    var vsrc = $('#vertex-shader').val();
+    var vsrc = vertexEditor.getSession().getValue();
     var vertexShader = createShader(vsrc, gl.VERTEX_SHADER);
     
-    var fsrc = $('#fragment-shader').val();
+    var fsrc = fragmentEditor.getSession().getValue();
     var fragmentShader = createShader(fsrc, gl.FRAGMENT_SHADER);
     
     shaderProgram = gl.createProgram();
@@ -154,14 +170,20 @@ function draw(canvas) {
     boxVbo.drawFill();
 }
 
-function attachRecompileEvents(textAreaId) {
-    var textArea = $(textAreaId);
-    textArea.change(recompileShaders);
-    textArea.keyup(recompileShaders);
+function initShaderEditor(editorId) {
+    var editor = ace.edit(editorId);
+    //editor.setTheme('ace/theme/twilight');
+    $('#' + editorId).parent().resizable({
+        resize: function() { editor.resize(); }
+    });
+    editor.getSession().doc.on('change', recompileShaders);
+    return editor;
 }
 
 $(document).ready(function() {
     $('#gl-canvas').resizable();
+    fragmentEditor = initShaderEditor('fragment-shader');
+    vertexEditor = initShaderEditor('vertex-shader');
     var canvas = document.getElementById('gl-canvas');
     try {
         initGL(canvas);
@@ -175,9 +197,6 @@ $(document).ready(function() {
     catch (e) {
         showError(e.name, e.message);
     }
-    
-    attachRecompileEvents('#fragment-shader');
-    attachRecompileEvents('#vertex-shader');
 });
 
     </script>
@@ -195,7 +214,8 @@ $(document).ready(function() {
 
             <td>
                 <h3 class="ui-corner-all ui-widget-header">Vertex shader</h3>
-                <textarea id="vertex-shader" rows="10" cols="80">
+                <div class="editorContainer">
+                    <pre class="editor" id="vertex-shader">
 attribute vec3 aVertexPosition;
 varying vec3 vVertexPosition;
 
@@ -203,9 +223,10 @@ void main(void) {
     gl_Position = vec4(aVertexPosition, 1.0);
     vVertexPosition = aVertexPosition;
 }
-</textarea>
+</pre></div>
                 <h3 class="ui-corner-all ui-widget-header">Fragment shader</h3>
-                <textarea id="fragment-shader" rows="10" cols="80">
+                <div class="editorContainer">
+                    <pre class="editor" id="fragment-shader">
 #ifdef GL_ES
 precision highp float;
 #endif
@@ -218,7 +239,7 @@ void main(void) {
     float b = 1.0 - (r + g)*0.5;
     gl_FragColor = vec4(r, g, b, 1.0);
 }
-</textarea>
+</pre></div>
             </td>
         </tr>
     </table>
