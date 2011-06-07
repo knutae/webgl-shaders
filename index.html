@@ -43,6 +43,7 @@ h3 {
     <script type="text/javascript" src="jquery-ui-1.8.10.custom.min.js"></script>
     <script type="text/javascript" src="webgl-utils.js"></script>
     <script type="text/javascript" src="ace/ace.js" charset="utf-8"></script>
+    <script type="text/javascript" src="ace/mode-c_cpp.js" charset="utf-8"></script>
     <script type="text/javascript">
 
 var gl;
@@ -173,6 +174,8 @@ function draw(canvas) {
 function initShaderEditor(editorId) {
     var editor = ace.edit(editorId);
     //editor.setTheme('ace/theme/twilight');
+    var CppMode = require('ace/mode/c_cpp').Mode;
+    editor.getSession().setMode(new CppMode());
     $('#' + editorId).parent().resizable({
         resize: function() { editor.resize(); }
     });
